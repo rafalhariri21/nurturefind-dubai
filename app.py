@@ -207,6 +207,8 @@ def keyword_match(problem_text, df):
 
 # ─── Search result card ───────────────────────────────────────────────────────
 def render_card(row, reviews_df, match_reason=""):
+    import streamlit.components.v1 as components
+
     name        = val(row, "name", "Unknown")
     specialty   = val(row, "specialty")
     location    = val(row, "location")
@@ -221,44 +223,62 @@ def render_card(row, reviews_df, match_reason=""):
     booking     = val(row, "booking_link")
     whatsapp    = val(row, "whatsapp_link")
 
-    dha_badge    = '<span class="badge badge-green">✓ DHA Licensed</span>' if dha else ""
-    online_badge = '<span class="badge badge-blue">💻 Online</span>' if online else ""
-    intro_badge  = '<span class="badge badge-amber">🎁 Free intro</span>' if free_intro else ""
-    nat_badge    = f'<span class="badge">{nationality}</span>' if nationality else ""
-    lang_html    = "".join(f'<span class="badge">{l.strip()}</span>' for l in languages.split(",") if l.strip())
+    def badge(text, cls=""):
+        style = {
+            "": "background:#F0EDE7;color:#5A5045",
+            "green": "background:#E6F4EE;color:#2D7A4F",
+            "amber": "background:#FFF8EC;color:#7A5A1A",
+            "blue":  "background:#E3F2FD;color:#1565C0",
+        }.get(cls, "background:#F0EDE7;color:#5A5045")
+        return f'<span style="display:inline-block;{style};border-radius:20px;padding:0.18rem 0.65rem;font-size:0.76rem;margin-right:0.35rem;margin-bottom:0.35rem">{text}</span>'
+
+    badges = ""
+    if dha:        badges += badge("✓ DHA Licensed", "green")
+    if online:     badges += badge("💻 Online", "blue")
+    if free_intro: badges += badge("🎁 Free intro", "amber")
+    if nationality: badges += badge(nationality)
+
+    lang_html = "".join(badge(l.strip()) for l in languages.split(",") if l.strip())
 
     avg, count = avg_rating(reviews_df, name)
     rating_html = ""
     if avg:
-        rating_html = f'<div style="margin:0.3rem 0"><span class="stars">{stars_html(avg)}</span><span class="rating-count">{avg} ({count} review{"s" if count!=1 else ""})</span></div>'
+        rating_html = f'<div style="margin:0.3rem 0;font-family:sans-serif"><span style="color:#E8A838">{stars_html(avg)}</span><span style="font-size:0.78rem;color:#8A7E6E;margin-left:0.3rem">{avg} ({count} review{"s" if count!=1 else ""})</span></div>'
 
     try:    price_fmt = f"AED {int(float(price)):,}"
     except: price_fmt = f"AED {price}" if price else "—"
 
+    book_style = "display:inline-flex;align-items:center;gap:0.35rem;padding:0.42rem 1rem;border-radius:8px;font-size:0.82rem;font-weight:600;text-decoration:none;background:#2D5A3D;color:#FFFFFF;font-family:sans-serif"
     book_btn = ""
     if booking:
-        book_btn = f'<a class="contact-btn btn-book" href="{booking}" target="_blank">📅 Book now</a>'
+        book_btn = f'<a style="{book_style}" href="{booking}" target="_blank">📅 Book now</a>'
     elif whatsapp:
-        book_btn = f'<a class="contact-btn btn-book" href="{whatsapp}" target="_blank">📅 Book via WhatsApp</a>'
+        book_btn = f'<a style="{book_style}" href="{whatsapp}" target="_blank">📅 Book via WhatsApp</a>'
 
-    match_block = f'<div class="match-reason">🔍 {match_reason}</div>' if match_reason else ""
+    match_block = f'<div style="background:#FFF8EC;border-left:3px solid #E8A838;padding:0.55rem 0.85rem;border-radius:0 8px 8px 0;font-size:0.83rem;color:#5A4A2A;margin-top:0.8rem;line-height:1.5;font-family:sans-serif">🔍 {match_reason}</div>' if match_reason else ""
 
     location_str = f"{location}, {city}" if city and city not in location else location
 
-    st.markdown(f"""
-<div class="specialist-card">
-    <div class="specialist-name">{name}</div>
-    <div class="specialist-specialty">{specialty}</div>
-    {rating_html}
-    <div class="pill-row">{dha_badge}{online_badge}{intro_badge}{nat_badge}</div>
-    <hr style="border:none;border-top:1px solid #F0EDE7;margin:0.7rem 0;">
-    <div class="stat">📍 <strong>{location_str}</strong></div>
-    <div class="stat">🏅 <strong>{yrs} yrs</strong> experience</div>
-    <div class="stat">💰 From <strong>{price_fmt}</strong> per session</div>
-    <div style="margin-top:0.5rem">{lang_html}</div>
-    <div class="contact-links">{book_btn}</div>
-    {match_block}
-</div>""", unsafe_allow_html=True)
+    stat_style = "font-size:0.82rem;color:#8A7E6E;margin-bottom:0.22rem;font-family:sans-serif"
+    strong_style = "color:#1C1C1C;font-weight:500"
+
+    card_html = f"""<!DOCTYPE html><html><body style="margin:0;padding:0;background:transparent">
+<div style="background:#FFFFFF;border:1px solid #E8E4DE;border-radius:16px;padding:1.4rem;font-family:sans-serif;box-sizing:border-box">
+  <div style="font-size:1.15rem;font-weight:700;color:#1C1C1C;margin-bottom:0.1rem">{name}</div>
+  <div style="font-size:0.76rem;color:#8A7E6E;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">{specialty}</div>
+  {rating_html}
+  <div style="display:flex;flex-wrap:wrap;gap:0.25rem;margin:0.4rem 0">{badges}</div>
+  <hr style="border:none;border-top:1px solid #F0EDE7;margin:0.6rem 0">
+  <div style="{stat_style}">📍 <strong style="{strong_style}">{location_str}</strong></div>
+  <div style="{stat_style}">🏅 <strong style="{strong_style}">{yrs} yrs</strong> experience</div>
+  <div style="{stat_style}">💰 From <strong style="{strong_style}">{price_fmt}</strong> per session</div>
+  <div style="margin-top:0.45rem">{lang_html}</div>
+  <div style="margin-top:0.7rem">{book_btn}</div>
+  {match_block}
+</div>
+</body></html>"""
+
+    components.html(card_html, height=320, scrolling=False)
 
     if st.button(f"View {name}'s full profile", key=f"profile_{name}_{id(row)}"):
         st.session_state["profile_id"] = name
